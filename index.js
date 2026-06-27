@@ -41,15 +41,38 @@ async function run() {
         };
         const result = await ticketsCollection.insertOne(addData);
         res.status(201).send({
-          success:true,
-          message:"Ticket added successfully waiting for approval",
-          
-          result});
+          success: true,
+          message: "Ticket added successfully waiting for approval",
 
+          result,
+        });
       } catch (error) {
         res.status(500).send({
           success: false,
           message: "Failed to add ticket.",
+          error: error.message,
+        });
+      }
+    });
+
+    // get  vendor tickets data
+    app.get("/api/tickets/vendor/:email", async (req, res) => {
+      try {
+        const { email } = req.params; // get the email form the parameter eg: GET /api/tickets/vendor/sumon@gmail.com
+        const query = {
+          "vendor.email": email,
+        };
+
+        const result = await ticketsCollection.find(query).toArray();
+        res.status(200).send({
+          success: true,
+          message: "successfully fetched vendor tickets",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to get  tickets.",
           error: error.message,
         });
       }
