@@ -119,6 +119,44 @@ async function run() {
       }
     });
 
+
+    // api for delete tickets for vendor using delete
+app.delete("/api/tickets/:id",async(req,res)=>{
+try {
+  const {id}=req.params;
+  const query ={
+    _id:new ObjectId(id),
+    // "vendor.email":req.user?.email  // use when jwt verified for extra safety
+  
+  }
+   const result =await ticketsCollection.deleteOne(query)
+
+    // Check if a document was actually deleted
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Ticket not found.",
+      });
+    }
+
+
+   res.status(200).send({
+    success:true,
+    message:"Data deleted successfully",
+    result
+   })
+} catch (error) {
+  res.status(500).send({
+    success:false,
+    message:"failed to delete",
+    error:error.message
+  })
+}
+
+})
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
