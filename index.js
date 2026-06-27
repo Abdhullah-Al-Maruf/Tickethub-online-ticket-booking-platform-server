@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT;
@@ -60,13 +60,54 @@ async function run() {
       try {
         const { email } = req.params; // get the email form the parameter eg: GET /api/tickets/vendor/sumon@gmail.com
         const query = {
-          "vendor.email": email,
+          "vendor.email": email, // it will depend on how your data store in db
         };
 
         const result = await ticketsCollection.find(query).toArray();
         res.status(200).send({
           success: true,
           message: "successfully fetched vendor tickets",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to get  tickets.",
+          error: error.message,
+        });
+      }
+    });
+    // update the tickets data for vendor using patch
+    app.patch("/api/tickets/:id", async (req, res) => {
+      try {
+        // get id and email
+        const { id } = req.params;
+        const data = req.body;
+        // set query
+        const query = {
+          _id: new ObjectId(id),
+          // "vendor.email": req.user.email //it will work when its jwt verified
+        };
+        // update data
+        const updatedData = {
+          $set: {
+            // ...data, this will give access to update all data
+            // specify data for update
+            title: data.title,
+            pricePerSeat: data.pricePerSeat,
+            quantityAvailable: data.quantityAvailable,
+            transportType: data.transportType,
+            route: data.route,
+            schedule: data.schedule,
+            perks: data.perks,
+            imageUrl: data.imageUrl,
+            updatedAt: new Date(),
+          },
+        };
+        const result = await ticketsCollection.updateOne(query, updatedData);
+        res.status(200).send({
+          success: true,
+          message: "successfully updated ticket",
           result,
         });
       } catch (error) {
