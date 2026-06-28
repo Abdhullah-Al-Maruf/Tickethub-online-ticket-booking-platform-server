@@ -38,6 +38,7 @@ async function run() {
           ...ticketsData,
           createdAt: new Date(),
           advertised: false,
+          isVisible: true,
           updatedAt: new Date(),
         };
         const result = await ticketsCollection.insertOne(addData);
@@ -312,7 +313,6 @@ async function run() {
         const updatedData = {
           $set: {
             role: "admin",
-     
           },
         };
         const result = await usersCollection.updateOne(query, updatedData);
@@ -357,7 +357,6 @@ async function run() {
         const updatedData = {
           $set: {
             role: "vendor",
-       
           },
         };
         const result = await usersCollection.updateOne(query, updatedData);
@@ -392,7 +391,7 @@ async function run() {
       }
     });
 
-    // 8.update user to fraud or unfraud
+    // 8.update user to fraud
     app.patch("/api/admin/users/:id/fraud", async (req, res) => {
       try {
         const { id } = req.params;
@@ -402,7 +401,6 @@ async function run() {
         const updatedData = {
           $set: {
             isFraud: true,
-    
           },
         };
 
@@ -425,6 +423,29 @@ async function run() {
           });
         }
 
+        // get user email
+        const user = await usersCollection.findOne(query);
+        //  check user exist or not
+        if (!user) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+        // hide by email
+        const hideQuery = {
+          "vendor.email": user.email,
+        };
+        // update the visibility
+        const updateDoc = {
+          $set: {
+            isVisible: false,
+            updatedAt: new Date(),
+          },
+        };
+        // hide all tickets
+        await ticketsCollection.updateMany(hideQuery, updateDoc);
+
         res.status(200).send({
           success: true,
           message: "mark as fraud",
@@ -438,6 +459,7 @@ async function run() {
         });
       }
     });
+    // api for unfraud
     app.patch("/api/admin/users/:id/unfraud", async (req, res) => {
       try {
         const { id } = req.params;
@@ -447,7 +469,6 @@ async function run() {
         const updatedData = {
           $set: {
             isFraud: false,
-       
           },
         };
 
@@ -469,6 +490,28 @@ async function run() {
             result,
           });
         }
+
+        // get user email
+        const user = await usersCollection.findOne(query);
+        // check use exist or not
+        if (!user) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+        const showQuery = {
+          "vendor.email": user.email,
+        };
+        // update the visibility
+        const updateDoc = {
+          $set: {
+            isVisible: true,
+            updatedAt: new Date(),
+          },
+        };
+        // show  all tickets
+        await ticketsCollection.updateMany(showQuery, updateDoc);
 
         res.status(200).send({
           success: true,
