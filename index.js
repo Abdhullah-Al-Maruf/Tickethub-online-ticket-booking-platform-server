@@ -392,6 +392,7 @@ async function run() {
     });
 
     // 8.update user to fraud
+    // todo:make  verifyVendorNotFraud jwt
     app.patch("/api/admin/users/:id/fraud", async (req, res) => {
       try {
         const { id } = req.params;
@@ -432,10 +433,12 @@ async function run() {
             message: "User not found",
           });
         }
+
         // hide by email
         const hideQuery = {
           "vendor.email": user.email,
         };
+
         // update the visibility
         const updateDoc = {
           $set: {
@@ -460,6 +463,7 @@ async function run() {
       }
     });
     // api for unfraud
+    // todo:make  verifyVendorNotFraud jwt
     app.patch("/api/admin/users/:id/unfraud", async (req, res) => {
       try {
         const { id } = req.params;
@@ -529,10 +533,12 @@ async function run() {
 
     //  api for public pages for collecting all the approved tickets data
     //1. api for all tickets page
+    // todo:make  verifyVendorNotFraud jwt
     app.get("/api/tickets", async (req, res) => {
       try {
         const query = {
           status: "approved",
+          isVisible: true,
         };
         const result = await ticketsCollection.find(query).toArray();
         res.status(200).send({
@@ -549,12 +555,14 @@ async function run() {
       }
     });
     //2. api for single tickets details in all  tickets page
+    // todo:make  verifyVendorNotFraud jwt
     app.get("/api/ticket/:id", async (req, res) => {
       try {
         const { id } = req.params;
         const query = {
           _id: new ObjectId(id),
           status: "approved",
+          isVisible: true,
         };
         const result = await ticketsCollection.findOne(query);
         res.status(200).send({
@@ -566,6 +574,35 @@ async function run() {
         res.status(500).send({
           success: false,
           message: "Failed to fetched single ticket data",
+          error: error.message,
+        });
+      }
+    });
+
+    // public api for showing advertised ticket
+
+    app.get("/api/home/advertised", async (req, res) => {
+      try {
+        const query = {
+          advertised: true,
+          status: "approved",
+          isVisible: true,
+        };
+
+        const result = await ticketsCollection
+          .find(query)
+          .sort({ createdAt: -1 }) //show new tickets first
+          .limit(6)
+          .toArray();
+        res.status(200).send({
+          success: true,
+          message: "only advertised tickets are fetched",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetched advertise ticket data",
           error: error.message,
         });
       }
