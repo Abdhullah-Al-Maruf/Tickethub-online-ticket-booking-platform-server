@@ -78,7 +78,7 @@ async function run() {
       }
     });
     // update the tickets data for vendor using patch
-    app.patch("/api/tickets/:id", async (req, res) => {
+    app.patch("/api/update-tickets/:id", async (req, res) => {
       try {
         // get id and email
         const { id } = req.params;
@@ -119,41 +119,113 @@ async function run() {
       }
     });
 
-
     // api for delete tickets for vendor using delete
-app.delete("/api/tickets/:id",async(req,res)=>{
-try {
-  const {id}=req.params;
-  const query ={
-    _id:new ObjectId(id),
-    // "vendor.email":req.user?.email  // use when jwt verified for extra safety
-  
+    app.delete("/api/delete-tickets/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+          // "vendor.email":req.user?.email  // use when jwt verified for extra safety
+        };
+        const result = await ticketsCollection.deleteOne(query);
+
+        // Check if a document was actually deleted
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "Ticket not found.",
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "Data deleted successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "failed to delete",
+          error: error.message,
+        });
+      }
+    });
+
+    // Admin related api goes below
+
+    // 1.get all vendor tickets
+    app.get("/api/admin/tickets", async (req, res) => {
+      try {
+        const result = await ticketsCollection.find().toArray();
+
+        res.status(200).send({
+          success: true,
+          message: "successfully fetched vendor tickets",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to get  tickets.",
+          error: error.message,
+        });
+      }
+    });
+
+// api for  updating status 
+// 1.for approved tickets 
+app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
+ try{
+  const {id} =req.params;
+  const query={
+    _id:new objectId(id)
   }
-   const result =await ticketsCollection.deleteOne(query)
-
-    // Check if a document was actually deleted
-    if (result.deletedCount === 0) {
-      return res.status(404).send({
-        success: false,
-        message: "Ticket not found.",
-      });
+  const updatedData={
+    $set:{
+      status:"approved",
+      updatedAt:new Date()
     }
-
-
-   res.status(200).send({
-    success:true,
-    message:"Data deleted successfully",
-    result
-   })
+  };
+  const result = await ticketsCollection.updateOne(query, updatedData);
+  res.status(200).send({
+    success: true,
+    message: "Ticket approved successfully",
+    result,
+  });
 } catch (error) {
   res.status(500).send({
-    success:false,
-    message:"failed to delete",
-    error:error.message
-  })
-}
+    success: false,
+    message: "Failed to approve ticket.",
+      error: error.message,
+    });
+  }
+}),
 
+// 2.for reject tickets
+
+app.patch("/api/admin/tickets/:id/reject", async (req,res)=>{
+  try {
+    const {id}=req.params;
+    const query= {
+      _id:new objectId(id)
+    }
+    const updatedData={
+      $set:{
+        status:"rejected",
+        updatedAt:new Date()
+      }
+    }
+    const result=await ticketsCollection.updateOne(query,updatedData)
+    res.status(200).send({
+      success:true,
+      message:"successfully Updated status",
+      result
+    })
+  } catch (error) {
+    
+  }
 })
+
 
 
 
