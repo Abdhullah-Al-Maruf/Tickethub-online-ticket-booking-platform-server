@@ -227,7 +227,28 @@ app.patch("/api/admin/tickets/:id/reject", async (req,res)=>{
 })
 
 
+// get api for public page for collecting all the approved tickets data
 
+app.get("/api/tickets", async (req,res)=>{
+  try {
+    const query={
+      status: "approved"
+    }
+const result=await ticketsCollection.find(query).toArray()
+res.status(200).send({
+  success:true,
+  message: "All admin approved tickets fetched successfully"
+  ,result
+})
+
+  } catch (error) {
+    res.status(500).send({
+      success:false,
+      message:"Failed to fetched tickets data",
+      error:error.message
+    })
+  }
+})
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
