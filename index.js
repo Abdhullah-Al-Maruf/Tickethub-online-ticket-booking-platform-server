@@ -24,6 +24,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     const db = client.db("ticket-hub");
+    const usersCollection=db.collection("user")
     const ticketsCollection = db.collection("tickets");
     const bookingCollection = db.collection("bookings");
     const paymentCollection = db.collection("payments");
@@ -174,7 +175,7 @@ async function run() {
 
     // api for  updating status
     // 1.for approved tickets
-    (app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
+    app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
       try {
         const { id } = req.params;
         const query = {
@@ -227,8 +228,8 @@ async function run() {
             error: error.message,
           });
         }
-      }));
-
+      });
+// 3.advertise tickets
     app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
       try {
         const { id } = req.params;
@@ -255,6 +256,7 @@ async function run() {
         });
       }
     });
+    // 4.for unadvertise ticket
     app.patch("/api/admin/tickets/:id/unadvertise", async (req, res) => {
       try {
         const { id } = req.params;
@@ -282,6 +284,24 @@ async function run() {
       }
     });
 
+// 5. for get all user 
+app.get("/api/admin/users",async(req,res)=>{
+  try {
+    const result= await usersCollection.find().toArray()
+    res.status(200).send({
+      success:true,
+      message:"fetched all user from user collection successfully",
+      result
+    })
+  } catch (error) {
+    res.status(500).send({
+          success: false,
+          message: "Failed to fetched users.",
+          error: error.message,
+        });
+  }
+})
+
     //  api for public pages for collecting all the approved tickets data
     //1. api for all tickets page
     app.get("/api/tickets", async (req, res) => {
@@ -304,7 +324,7 @@ async function run() {
       }
     });
     //2. api for single tickets details in all  tickets page
-    app.get("/api/tickets/:id", async (req, res) => {
+    app.get("/api/ticket/:id", async (req, res) => {
       try {
         const { id } = req.params;
         const query = {
