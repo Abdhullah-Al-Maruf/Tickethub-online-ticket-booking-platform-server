@@ -178,7 +178,7 @@ app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
  try{
   const {id} =req.params;
   const query={
-    _id:new objectId(id)
+    _id: new ObjectId(id)
   }
   const updatedData={
     $set:{
@@ -207,7 +207,7 @@ app.patch("/api/admin/tickets/:id/reject", async (req,res)=>{
   try {
     const {id}=req.params;
     const query= {
-      _id:new objectId(id)
+      _id:new ObjectId(id)
     }
     const updatedData={
       $set:{
@@ -218,11 +218,68 @@ app.patch("/api/admin/tickets/:id/reject", async (req,res)=>{
     const result=await ticketsCollection.updateOne(query,updatedData)
     res.status(200).send({
       success:true,
-      message:"successfully Updated status",
+      message:"successfully Updated status to rejected",
       result
     })
   } catch (error) {
-    
+    res.status(500).send({
+    success: false,
+    message: "Failed to reject ticket.",
+      error: error.message,
+    });
+  }
+})
+
+app.patch("/api/admin/tickets/:id/advertise", async (req,res)=>{
+  try {
+    const {id}=req.params;
+    const query= {
+      _id:new ObjectId(id)
+    }
+    const updatedData={
+      $set:{
+       advertised:true,
+        updatedAt:new Date()
+      }
+    }
+    const result=await ticketsCollection.updateOne(query,updatedData)
+    res.status(200).send({
+      success:true,
+      message:"successfully advertised",
+      result
+    })
+  } catch (error) {
+    res.status(500).send({
+    success: false,
+    message: "Failed to advertise ticket.",
+      error: error.message,
+    });
+  }
+})
+app.patch("/api/admin/tickets/:id/unadvertise", async (req,res)=>{
+  try {
+    const {id}=req.params;
+    const query= {
+      _id:new ObjectId(id)
+    }
+    const updatedData={
+      $set:{
+       advertised:false,
+        updatedAt:new Date()
+      }
+    }
+    const result=await ticketsCollection.updateOne(query,updatedData)
+    res.status(200).send({
+      success:true,
+      message:"successfully unadvertised",
+      result
+    })
+  } catch (error) {
+    res.status(500).send({
+    success: false,
+    message: "Failed to unadvertised ticket.",
+      error: error.message,
+    });
   }
 })
 
