@@ -172,140 +172,159 @@ async function run() {
       }
     });
 
-// api for  updating status 
-// 1.for approved tickets 
-app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
- try{
-  const {id} =req.params;
-  const query={
-    _id: new ObjectId(id)
-  }
-  const updatedData={
-    $set:{
-      status:"approved",
-      updatedAt:new Date()
-    }
-  };
-  const result = await ticketsCollection.updateOne(query, updatedData);
-  res.status(200).send({
-    success: true,
-    message: "Ticket approved successfully",
-    result,
-  });
-} catch (error) {
-  res.status(500).send({
-    success: false,
-    message: "Failed to approve ticket.",
-      error: error.message,
-    });
-  }
-}),
-
-// 2.for reject tickets
-
-app.patch("/api/admin/tickets/:id/reject", async (req,res)=>{
-  try {
-    const {id}=req.params;
-    const query= {
-      _id:new ObjectId(id)
-    }
-    const updatedData={
-      $set:{
-        status:"rejected",
-        updatedAt:new Date()
+    // api for  updating status
+    // 1.for approved tickets
+    (app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            status: "approved",
+            updatedAt: new Date(),
+          },
+        };
+        const result = await ticketsCollection.updateOne(query, updatedData);
+        res.status(200).send({
+          success: true,
+          message: "Ticket approved successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to approve ticket.",
+          error: error.message,
+        });
       }
-    }
-    const result=await ticketsCollection.updateOne(query,updatedData)
-    res.status(200).send({
-      success:true,
-      message:"successfully Updated status to rejected",
-      result
-    })
-  } catch (error) {
-    res.status(500).send({
-    success: false,
-    message: "Failed to reject ticket.",
-      error: error.message,
-    });
-  }
-})
+    }),
+      // 2.for reject tickets
 
-app.patch("/api/admin/tickets/:id/advertise", async (req,res)=>{
-  try {
-    const {id}=req.params;
-    const query= {
-      _id:new ObjectId(id)
-    }
-    const updatedData={
-      $set:{
-       advertised:true,
-        updatedAt:new Date()
+      app.patch("/api/admin/tickets/:id/reject", async (req, res) => {
+        try {
+          const { id } = req.params;
+          const query = {
+            _id: new ObjectId(id),
+          };
+          const updatedData = {
+            $set: {
+              status: "rejected",
+              updatedAt: new Date(),
+            },
+          };
+          const result = await ticketsCollection.updateOne(query, updatedData);
+          res.status(200).send({
+            success: true,
+            message: "successfully Updated status to rejected",
+            result,
+          });
+        } catch (error) {
+          res.status(500).send({
+            success: false,
+            message: "Failed to reject ticket.",
+            error: error.message,
+          });
+        }
+      }));
+
+    app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            advertised: true,
+            updatedAt: new Date(),
+          },
+        };
+        const result = await ticketsCollection.updateOne(query, updatedData);
+        res.status(200).send({
+          success: true,
+          message: "successfully advertised",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to advertise ticket.",
+          error: error.message,
+        });
       }
-    }
-    const result=await ticketsCollection.updateOne(query,updatedData)
-    res.status(200).send({
-      success:true,
-      message:"successfully advertised",
-      result
-    })
-  } catch (error) {
-    res.status(500).send({
-    success: false,
-    message: "Failed to advertise ticket.",
-      error: error.message,
     });
-  }
-})
-app.patch("/api/admin/tickets/:id/unadvertise", async (req,res)=>{
-  try {
-    const {id}=req.params;
-    const query= {
-      _id:new ObjectId(id)
-    }
-    const updatedData={
-      $set:{
-       advertised:false,
-        updatedAt:new Date()
+    app.patch("/api/admin/tickets/:id/unadvertise", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            advertised: false,
+            updatedAt: new Date(),
+          },
+        };
+        const result = await ticketsCollection.updateOne(query, updatedData);
+        res.status(200).send({
+          success: true,
+          message: "successfully unadvertised",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to unadvertised ticket.",
+          error: error.message,
+        });
       }
-    }
-    const result=await ticketsCollection.updateOne(query,updatedData)
-    res.status(200).send({
-      success:true,
-      message:"successfully unadvertised",
-      result
-    })
-  } catch (error) {
-    res.status(500).send({
-    success: false,
-    message: "Failed to unadvertised ticket.",
-      error: error.message,
     });
-  }
-})
 
-
-// get api for public page for collecting all the approved tickets data
-
-app.get("/api/tickets", async (req,res)=>{
-  try {
-    const query={
-      status: "approved"
-    }
-const result=await ticketsCollection.find(query).toArray()
-res.status(200).send({
-  success:true,
-  message: "All admin approved tickets fetched successfully"
-  ,result
-})
-
-  } catch (error) {
-    res.status(500).send({
-      success:false,
-      message:"Failed to fetched tickets data",
-      error:error.message
-    })
-  }
-})
+    //  api for public pages for collecting all the approved tickets data
+    //1. api for all tickets page
+    app.get("/api/tickets", async (req, res) => {
+      try {
+        const query = {
+          status: "approved",
+        };
+        const result = await ticketsCollection.find(query).toArray();
+        res.status(200).send({
+          success: true,
+          message: "All admin approved tickets fetched successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetched tickets data",
+          error: error.message,
+        });
+      }
+    });
+    //2. api for single tickets details in all  tickets page
+    app.get("/api/tickets/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+          status: "approved",
+        };
+        const result = await ticketsCollection.findOne(query);
+        res.status(200).send({
+          success: true,
+          message: "single ticket data fetched successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetched single ticket data",
+          error: error.message,
+        });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
