@@ -24,7 +24,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     const db = client.db("ticket-hub");
-    const usersCollection=db.collection("user")
+    const usersCollection = db.collection("user");
     const ticketsCollection = db.collection("tickets");
     const bookingCollection = db.collection("bookings");
     const paymentCollection = db.collection("payments");
@@ -175,7 +175,7 @@ async function run() {
 
     // api for  updating status
     // 1.for approved tickets
-    app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
+    (app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
       try {
         const { id } = req.params;
         const query = {
@@ -228,8 +228,8 @@ async function run() {
             error: error.message,
           });
         }
-      });
-// 3.advertise tickets
+      }));
+    // 3.advertise tickets
     app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
       try {
         const { id } = req.params;
@@ -284,23 +284,205 @@ async function run() {
       }
     });
 
-// 5. for get all user 
-app.get("/api/admin/users",async(req,res)=>{
-  try {
-    const result= await usersCollection.find().toArray()
-    res.status(200).send({
-      success:true,
-      message:"fetched all user from user collection successfully",
-      result
-    })
-  } catch (error) {
-    res.status(500).send({
+    // 5. for get all user
+    app.get("/api/admin/users", async (req, res) => {
+      try {
+        const result = await usersCollection.find().toArray();
+        res.status(200).send({
+          success: true,
+          message: "fetched all user from user collection successfully",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
           success: false,
           message: "Failed to fetched users.",
           error: error.message,
         });
-  }
-})
+      }
+    });
+
+    // 6.make admin
+    app.patch("/api/admin/users/:id/make-admin", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            role: "admin",
+     
+          },
+        };
+        const result = await usersCollection.updateOne(query, updatedData);
+        // User not found
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        // User is already an admin
+        if (result.modifiedCount === 0) {
+          return res.status(200).send({
+            success: true,
+            message: "User is already an admin",
+            result,
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "successfully role changed to admin",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to change role as admin",
+          error: error.message,
+        });
+      }
+    });
+
+    // 6. for making vendor
+    app.patch("/api/admin/users/:id/make-vendor", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            role: "vendor",
+       
+          },
+        };
+        const result = await usersCollection.updateOne(query, updatedData);
+        // User not found
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        // User is already an vendor
+        if (result.modifiedCount === 0) {
+          return res.status(200).send({
+            success: true,
+            message: "User is already an vendor",
+            result,
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "successfully role changed to vendor",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to change role as vendor",
+          error: error.message,
+        });
+      }
+    });
+
+    // 8.update user to fraud or unfraud
+    app.patch("/api/admin/users/:id/fraud", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            isFraud: true,
+    
+          },
+        };
+
+        const result = await usersCollection.updateOne(query, updatedData);
+
+        // User not found
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        // Already marked as fraud
+        if (result.modifiedCount === 0) {
+          return res.status(200).send({
+            success: true,
+            message: "User is already marked as fraud",
+            result,
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "mark as fraud",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to mark as fraud",
+          error: error.message,
+        });
+      }
+    });
+    app.patch("/api/admin/users/:id/unfraud", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const query = {
+          _id: new ObjectId(id),
+        };
+        const updatedData = {
+          $set: {
+            isFraud: false,
+       
+          },
+        };
+
+        const result = await usersCollection.updateOne(query, updatedData);
+
+        // User not found
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        // Already marked as fraud
+        if (result.modifiedCount === 0) {
+          return res.status(200).send({
+            success: true,
+            message: "User is already marked as un-fraud",
+            result,
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "mark as un-fraud",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to mark as un-fraud",
+          error: error.message,
+        });
+      }
+    });
 
     //  api for public pages for collecting all the approved tickets data
     //1. api for all tickets page
