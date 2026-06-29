@@ -153,6 +153,66 @@ async function run() {
       }
     });
 
+// user api 
+
+   //1. User books a ticket
+app.post("/api/bookings", async (req, res) => {
+  try {
+    const bookingData = req.body;
+
+    const addData = {
+      ...bookingData,
+      status: "pending", // pending -> approved -> rejected
+      paymentStatus: "unpaid", // unpaid -> paid
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await bookingCollection.insertOne(addData);
+
+    res.status(201).send({
+      success: true,
+      message: "Booking request sent successfully.",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to create booking.",
+      error: error.message,
+    });
+  }
+});
+
+//2. Get all bookings of a specific user
+app.get("/api/bookings/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const query = {
+      "user.email": email,
+    };
+
+    const result = await bookingCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.status(200).send({
+      success: true,
+      message: "Bookings fetched successfully.",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch bookings.",
+      error: error.message,
+    });
+  }
+});
+
+
     // Admin related api goes below
 
     // 1.get all vendor tickets
