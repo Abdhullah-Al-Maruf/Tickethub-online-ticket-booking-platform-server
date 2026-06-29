@@ -153,6 +153,116 @@ async function run() {
       }
     });
 
+// api for get user booking from booking collection and approve reject them
+// 1. get all booking only by email
+app.get("/api/vendor/bookings/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const query = {
+      "vendor.email": email,
+    };
+
+    const result = await bookingCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.status(200).send({
+      success: true,
+      message: "Vendor booking requests fetched successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch booking requests",
+      error: error.message,
+    });
+  }
+});
+
+// vendor approve user ticket
+// Approve booking
+app.patch("/api/vendor/bookings/:id/approve", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = {
+      _id: new ObjectId(id),
+    };
+
+    const updateDoc = {
+      $set: {
+        status: "approved",
+        updatedAt: new Date(),
+      },
+    };
+
+    const result = await bookingCollection.updateOne(query, updateDoc);
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Booking approved successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to approve booking",
+      error: error.message,
+    });
+  }
+});
+
+// vendor reject user booking 
+// Reject booking
+app.patch("/api/vendor/bookings/:id/reject", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = {
+      _id: new ObjectId(id),
+    };
+
+    const updateDoc = {
+      $set: {
+        status: "rejected",
+        updatedAt: new Date(),
+      },
+    };
+
+    const result = await bookingCollection.updateOne(query, updateDoc);
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Booking rejected successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to reject booking",
+      error: error.message,
+    });
+  }
+});
+
+
 // user api 
 
    //1. User books a ticket
