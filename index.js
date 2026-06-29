@@ -290,7 +290,7 @@ app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: "Failed to advertise ticket.",
+      message: "Failed to advertise ticket limit reached to 6",
       error: error.message,
     });
   }
@@ -501,6 +501,7 @@ app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
       }
     });
     // api for unfraud
+
     // todo:make  verifyVendorNotFraud jwt
     app.patch("/api/admin/users/:id/unfraud", async (req, res) => {
       try {
@@ -572,26 +573,48 @@ app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
     //  api for public pages for collecting all the approved tickets data
     //1. api for all tickets page
     // todo:make  verifyVendorNotFraud jwt
-    app.get("/api/tickets", async (req, res) => {
-      try {
-        const query = {
-          status: "approved",
-          isVisible: true,
-        };
-        const result = await ticketsCollection.find(query).toArray();
-        res.status(200).send({
-          success: true,
-          message: "All admin approved tickets fetched successfully",
-          result,
-        });
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: "Failed to fetched tickets data",
-          error: error.message,
-        });
-      }
+app.get("/api/tickets", async (req, res) => {
+  try {
+    // Get pagination params from query string
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = {
+      status: "approved",
+      isVisible: true,
+    };
+
+    // Get total count (for total pages)
+    const total = await ticketsCollection.countDocuments(query);
+
+    // Fetch paginated results
+    const result = await ticketsCollection
+      .find(query)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+
+    res.status(200).send({
+      success: true,
+      message: "Tickets fetched successfully",
+      result,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch tickets",
+      error: error.message,
+    });
+  }
+});
     //2. api for single tickets details in all  tickets page
     // todo:make  verifyVendorNotFraud jwt
     app.get("/api/ticket/:id", async (req, res) => {
