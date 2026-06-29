@@ -669,37 +669,33 @@ app.get("/api/tickets", async (req, res) => {
 // api for searching and filtering and sorting and pagination in all ticket page
 app.get("/api/tickets/search", async (req, res) => {
   try {
-    // 1. Pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build the filter query
     const query = { status: "approved", isVisible: true };
 
-    // Optional filters (only add if provided)
-    if (req.query.from) {
+    if (req.query.from && req.query.from.trim() !== "") {
       query["route.from"] = { $regex: req.query.from, $options: "i" };
     }
-    if (req.query.to) {
+    if (req.query.to && req.query.to.trim() !== "") {
       query["route.to"] = { $regex: req.query.to, $options: "i" };
     }
-    if (req.query.transportType && req.query.transportType !== "all") {
-      query.transportType = req.query.transportType;
+
+    const validTypes = ["bus", "train", "launch", "flight"];
+    if (req.query.transportType && validTypes.includes(req.query.transportType.toLowerCase())) {
+      // Use regex for case-insensitive matching
+      query.transportType = { $regex: req.query.transportType, $options: "i" };
     }
 
-    // 3. Sorting
-    let sortOption = { createdAt: -1 }; // default: newest first
+    let sortOption = { createdAt: -1 };
     if (req.query.sort === "low-high") {
       sortOption = { pricePerSeat: 1 };
     } else if (req.query.sort === "high-low") {
       sortOption = { pricePerSeat: -1 };
     }
 
-    // 4. Count total matching documents (for pagination metadata)
     const total = await ticketsCollection.countDocuments(query);
-
-    // 5. Fetch paginated results
     const result = await ticketsCollection
       .find(query)
       .sort(sortOption)
@@ -707,23 +703,9 @@ app.get("/api/tickets/search", async (req, res) => {
       .limit(limit)
       .toArray();
 
-    // 6. Send response
-    res.status(200).json({
-      success: true,
-      result,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    res.status(200).json({ success: true, result, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Search failed",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Search failed", error: error.message });
   }
 });
 
