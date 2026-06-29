@@ -156,23 +156,44 @@ async function run() {
     // Admin related api goes below
 
     // 1.get all vendor tickets
-    app.get("/api/admin/tickets", async (req, res) => {
-      try {
-        const result = await ticketsCollection.find().sort({ createdAt: -1 }).toArray();
 
-        res.status(200).send({
-          success: true,
-          message: "successfully fetched vendor tickets",
-          result,
-        });
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: "Failed to get  tickets.",
-          error: error.message,
-        });
-      }
+app.get("/api/admin/tickets", async (req, res) => {
+  try {
+    // Get pagination params from query
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await ticketsCollection.countDocuments();
+
+    // Get paginated results
+    const result = await ticketsCollection
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.status(200).send({
+      success: true,
+      message: "Successfully fetched vendor tickets",
+      result,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to get tickets.",
+      error: error.message,
+    });
+  }
+});
 
     // api for  updating status
     // 1.for approved tickets
@@ -295,6 +316,31 @@ app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
     });
   }
 });
+
+  // count the approved tickets
+app.get("/api/tickets/count-active", async (req, res) => {
+  try {
+    const query = {
+      status: "approved",
+      isVisible: true,
+      advertised: true, // assuming you have this boolean field
+    };
+
+    const count = await ticketsCollection.countDocuments(query);
+
+    res.status(200).send({
+      success: true,
+      count,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch active ad count",
+      error: error.message,
+    });
+  }
+});
+
     // 4.for unadvertise ticket
     app.patch("/api/admin/tickets/:id/unadvertise", async (req, res) => {
       try {
@@ -570,6 +616,9 @@ app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
       }
     });
 
+
+
+
     //  api for public pages for collecting all the approved tickets data
     //1. api for all tickets page
     // todo:make  verifyVendorNotFraud jwt
@@ -615,6 +664,72 @@ app.get("/api/tickets", async (req, res) => {
     });
   }
 });
+
+
+// api for searching and filtering and sorting and pagination in all ticket page
+app.get("/api/tickets/search", async (req, res) => {
+  try {
+    // 1. Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build the filter query
+    const query = { status: "approved", isVisible: true };
+
+    // Optional filters (only add if provided)
+    if (req.query.from) {
+      query["route.from"] = { $regex: req.query.from, $options: "i" };
+    }
+    if (req.query.to) {
+      query["route.to"] = { $regex: req.query.to, $options: "i" };
+    }
+    if (req.query.transportType && req.query.transportType !== "all") {
+      query.transportType = req.query.transportType;
+    }
+
+    // 3. Sorting
+    let sortOption = { createdAt: -1 }; // default: newest first
+    if (req.query.sort === "low-high") {
+      sortOption = { pricePerSeat: 1 };
+    } else if (req.query.sort === "high-low") {
+      sortOption = { pricePerSeat: -1 };
+    }
+
+    // 4. Count total matching documents (for pagination metadata)
+    const total = await ticketsCollection.countDocuments(query);
+
+    // 5. Fetch paginated results
+    const result = await ticketsCollection
+      .find(query)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    // 6. Send response
+    res.status(200).json({
+      success: true,
+      result,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Search failed",
+      error: error.message,
+    });
+  }
+});
+
+
+
+
     //2. api for single tickets details in all  tickets page
     // todo:make  verifyVendorNotFraud jwt
     app.get("/api/ticket/:id", async (req, res) => {
@@ -652,7 +767,6 @@ app.get("/api/tickets", async (req, res) => {
 
         const result = await ticketsCollection
           .find(query)
-          .sort({ createdAt: -1 }) //show new tickets first
           .limit(6)
           .toArray();
         res.status(200).send({
@@ -664,6 +778,32 @@ app.get("/api/tickets", async (req, res) => {
         res.status(500).send({
           success: false,
           message: "Failed to fetched advertise ticket data",
+          error: error.message,
+        });
+      }
+    });
+    // api for latest tickets
+    app.get("/api/home/latest", async (req, res) => {
+      try {
+        const query = {
+          status: "approved",
+          isVisible: true,
+        };
+
+        const result = await ticketsCollection
+          .find(query)
+          .limit(6)
+          .sort({ createdAt: -1 })
+          .toArray();
+        res.status(200).send({
+          success: true,
+          message: "only latest tickets are fetched",
+          result,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetched latest ticket data",
           error: error.message,
         });
       }
