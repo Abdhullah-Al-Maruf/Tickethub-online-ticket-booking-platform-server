@@ -65,7 +65,7 @@ async function run() {
           "vendor.email": email, // it will depend on how your data store in db
         };
 
-        const result = await ticketsCollection.find(query).toArray();
+        const result = await ticketsCollection.find(query).sort({ createdAt: -1 }).toArray(); // sort for show latest tickets
         res.status(200).send({
           success: true,
           message: "successfully fetched vendor tickets",
@@ -158,7 +158,7 @@ async function run() {
     // 1.get all vendor tickets
     app.get("/api/admin/tickets", async (req, res) => {
       try {
-        const result = await ticketsCollection.find().toArray();
+        const result = await ticketsCollection.find().sort({ createdAt: -1 }).toArray();
 
         res.status(200).send({
           success: true,
@@ -176,7 +176,7 @@ async function run() {
 
     // api for  updating status
     // 1.for approved tickets
-    (app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
+    app.patch("/api/admin/tickets/:id/approve", async (req, res) => {
       try {
         const { id } = req.params;
         const query = {
@@ -229,34 +229,72 @@ async function run() {
             error: error.message,
           });
         }
-      }));
-    // 3.advertise tickets
-    app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
-      try {
-        const { id } = req.params;
-        const query = {
-          _id: new ObjectId(id),
-        };
-        const updatedData = {
-          $set: {
-            advertised: true,
-            updatedAt: new Date(),
-          },
-        };
-        const result = await ticketsCollection.updateOne(query, updatedData);
-        res.status(200).send({
-          success: true,
-          message: "successfully advertised",
-          result,
-        });
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: "Failed to advertise ticket.",
-          error: error.message,
-        });
-      }
+      });
+  
+// 3. Advertise ticket (Maximum 6 tickets)
+app.patch("/api/admin/tickets/:id/advertise", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Count currently advertised tickets
+    const advertisedCount = await ticketsCollection.countDocuments({
+      advertised: true,
+      status: "approved",
+      isVisible: true,
     });
+
+    // Don't allow more than 6 advertised tickets
+    if (advertisedCount >= 6) {
+      return res.status(400).send({
+        success: false,
+        message: "Maximum 6 advertised tickets are allowed.",
+      });
+    }
+
+    // Find only approved & visible ticket
+    const query = {
+      _id: new ObjectId(id),
+      status: "approved",
+      isVisible: true,
+    };
+
+    const updateDoc = {
+      $set: {
+        advertised: true,
+        updatedAt: new Date(),
+      },
+    };
+
+    const result = await ticketsCollection.updateOne(query, updateDoc);
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Ticket not found or it is not approved/visible.",
+      });
+    }
+
+    if (result.modifiedCount === 0) {
+      return res.status(200).send({
+        success: true,
+        message: "Ticket is already advertised.",
+        result,
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Ticket advertised successfully.",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to advertise ticket.",
+      error: error.message,
+    });
+  }
+});
     // 4.for unadvertise ticket
     app.patch("/api/admin/tickets/:id/unadvertise", async (req, res) => {
       try {
