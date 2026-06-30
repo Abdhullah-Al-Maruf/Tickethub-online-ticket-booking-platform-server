@@ -19,6 +19,15 @@ const client = new MongoClient(uri, {
 app.use(express.json());
 app.use(cors());
 
+
+// crate this function for deployment production
+// client.connect(()=>{
+// console.log("connecting to mongo db");
+
+// }).catch(console.dir)
+
+
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -294,6 +303,64 @@ app.post("/api/bookings", async (req, res) => {
   }
 });
 
+// payment api
+app.post("/api/payment", async (req, res) => {
+  try {
+    const {
+      sessionId,
+      bookingId,
+      userId,
+      price,
+      paymentIntent,
+    } = req.body;
+
+    const isExist = await paymentCollection.findOne({
+      sessionId,
+    });
+
+    if (isExist) {
+      return res.status(200).send({
+        success: true,
+        message: "Payment already exists",
+      });
+    }
+
+    const result = await paymentCollection.insertOne({
+      sessionId,
+      paymentIntent,
+      bookingId,
+      userId,
+      price,
+      paymentStatus: "paid",
+      createdAt: new Date(),
+    });
+
+    await bookingCollection.updateOne(
+      {
+        _id: new ObjectId(bookingId),
+      },
+      {
+        $set: {
+          paymentStatus: "paid",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    res.status(200).send({
+      success: true,
+      message: "Payment Successful",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+
 //2. Get all bookings of a specific user
 app.get("/api/bookings/:email", async (req, res) => {
   try {
@@ -321,6 +388,34 @@ app.get("/api/bookings/:email", async (req, res) => {
     });
   }
 });
+
+app.get("/api/booking/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await bookingCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!result) {
+      return res.status(404).send({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    res.send({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 
 
     // Admin related api goes below
@@ -960,9 +1055,12 @@ app.get("/api/tickets/search", async (req, res) => {
         });
       }
     });
-
+  
+app.get("/",async(req,res)=>{
+  res.send("hello world");
+})
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
@@ -971,8 +1069,10 @@ app.get("/api/tickets/search", async (req, res) => {
       console.log(`Example app listening on port ${port}`);
     });
   } finally {
-    // Ensures that the client will close when you finish/errorJ
-    // await client.close();
+  //   // Ensures that the client will close when you finish/errorJ
+  //   // await client.close();
   }
 }
 run().catch(console.dir);
+// crate this for deployment
+// module.exports=app; 

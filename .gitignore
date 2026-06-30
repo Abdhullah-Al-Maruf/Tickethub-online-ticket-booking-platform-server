@@ -46,3 +46,4 @@ temp/
 
 # Optional: uploads folder (if storing uploaded files locally)
 uploads/
+.vercel
