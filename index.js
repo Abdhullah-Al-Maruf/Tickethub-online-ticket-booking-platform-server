@@ -272,7 +272,7 @@ app.patch("/api/vendor/bookings/:id/reject", async (req, res) => {
 });
 
 
-// user api 
+// user  related  apis 
 
    //1. User books a ticket
 app.post("/api/bookings", async (req, res) => {
@@ -324,6 +324,18 @@ app.post("/api/payment", async (req, res) => {
         message: "Payment already exists",
       });
     }
+
+// iam finding booking for the extra information to save in booking collection
+const booking = await bookingCollection.findOne({
+  _id: new ObjectId(bookingId),
+});
+
+if (!booking) {
+  return res.status(404).send({
+    success: false,
+    message: "Booking not found",
+  });
+}
 
     const result = await paymentCollection.insertOne({
       sessionId,
