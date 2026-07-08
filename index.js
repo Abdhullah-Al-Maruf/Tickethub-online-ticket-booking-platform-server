@@ -372,8 +372,126 @@ if (!booking) {
   }
 });
 
+// Get transaction history of a specific user
+app.get("/api/payments/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
 
-//2. Get all bookings of a specific user
+    // Parse and sanitize pagination params
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit) || 10, 1);
+    const skip = (page - 1) * limit;
+
+    const aggResult = await paymentCollection
+      .aggregate([
+        // 1. Get only this user's payments
+        {
+          $match: {
+            userId: userId,
+          },
+        },
+
+        // 2. Join bookings collection
+        {
+          $lookup: {
+            from: "bookings",
+
+            let: {
+              bookingId: "$bookingId",
+            },
+
+            pipeline: [
+              {
+                $addFields: {
+                  idString: {
+                    $toString: "$_id",
+                  },
+                },
+              },
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$idString", "$$bookingId"],
+                  },
+                },
+              },
+            ],
+
+            as: "booking",
+          },
+        },
+
+        // 3. Convert booking array into object
+        {
+          $unwind: "$booking",
+        },
+
+        // 4. Sort newest first
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+
+        // 5. Shape the fields
+        {
+          $project: {
+            _id: 1,
+            sessionId: 1,
+            paymentIntent: 1,
+            paymentStatus: 1,
+            price: 1,
+            createdAt: 1,
+
+            bookingId: "$booking._id",
+            ticketTitle: "$booking.ticketTitle",
+            transportType: "$booking.transportType",
+            quantity: "$booking.quantity",
+            totalPrice: "$booking.totalPrice",
+
+            route: "$booking.route",
+            schedule: "$booking.schedule",
+
+            vendor: "$booking.vendor",
+          },
+        },
+
+        // 6. Split into paginated data + total count, in one pass
+        {
+          $facet: {
+            data: [{ $skip: skip }, { $limit: limit }],
+            totalCount: [{ $count: "count" }],
+          },
+        },
+      ])
+      .toArray();
+
+    const result = aggResult[0]?.data || [];
+    const totalCount = aggResult[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.status(200).send({
+      success: true,
+      message: "Transaction history fetched successfully.",
+      result,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch transaction history.",
+      error: error.message,
+    });
+  }
+});
+//3. Get all bookings of a specific user
 app.get("/api/bookings/:email", async (req, res) => {
   try {
     const { email } = req.params;
