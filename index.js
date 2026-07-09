@@ -20,11 +20,7 @@ app.use(express.json());
 app.use(cors());
 
 
-// crate this function for deployment production
-// client.connect(()=>{
-// console.log("connecting to mongo db");
 
-// }).catch(console.dir)
 
 
 
@@ -270,6 +266,228 @@ app.patch("/api/vendor/bookings/:id/reject", async (req, res) => {
     });
   }
 });
+
+// revenue overview page api 
+
+// GET /api/vendor/revenue-stats/:email
+app.get("/api/vendor/revenue-stats/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const [totalTicketsAdded, agg] = await Promise.all([
+      ticketsCollection.countDocuments({ "vendor.email": email }),
+
+      paymentCollection
+        .aggregate([
+          { $match: { paymentStatus: "paid" } },
+          { $addFields: { bookingObjId: { $toObjectId: "$bookingId" } } },
+          {
+            $lookup: {
+              from: "bookings", // adjust if your collection name differs
+              localField: "bookingObjId",
+              foreignField: "_id",
+              as: "booking",
+            },
+          },
+          { $unwind: "$booking" },
+          { $match: { "booking.vendor.email": email } },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$price" },
+              totalSold: { $sum: "$booking.quantity" },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+
+    res.status(200).send({
+      success: true,
+      message: "Vendor revenue stats fetched successfully",
+      result: {
+        totalTicketsAdded,
+        totalTicketsSold: agg[0]?.totalSold || 0,
+        totalRevenue: agg[0]?.totalRevenue || 0,
+      },
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch revenue stats",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/vendor/monthly-revenue/:email
+app.get("/api/vendor/monthly-revenue/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const currentYear = new Date().getFullYear();
+
+    const monthly = await paymentCollection
+      .aggregate([
+        {
+          $match: {
+            paymentStatus: "paid",
+            createdAt: {
+              $gte: new Date(`${currentYear}-01-01`),
+              $lte: new Date(`${currentYear}-12-31T23:59:59`),
+            },
+          },
+        },
+        { $addFields: { bookingObjId: { $toObjectId: "$bookingId" } } },
+        {
+          $lookup: {
+            from: "bookings",
+            localField: "bookingObjId",
+            foreignField: "_id",
+            as: "booking",
+          },
+        },
+        { $unwind: "$booking" },
+        { $match: { "booking.vendor.email": email } },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            value: { $sum: "$price" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      .toArray();
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const result = monthNames.map((month, idx) => {
+      const found = monthly.find((m) => m._id === idx + 1);
+      return { month, value: found ? found.value : 0 };
+    });
+
+    res.status(200).send({
+      success: true,
+      message: "Monthly revenue fetched successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch monthly revenue",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/vendor/tickets-by-transport/:email
+app.get("/api/vendor/tickets-by-transport/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const results = await paymentCollection
+      .aggregate([
+        { $match: { paymentStatus: "paid" } },
+        { $addFields: { bookingObjId: { $toObjectId: "$bookingId" } } },
+        {
+          $lookup: {
+            from: "bookings",
+            localField: "bookingObjId",
+            foreignField: "_id",
+            as: "booking",
+          },
+        },
+        { $unwind: "$booking" },
+        { $match: { "booking.vendor.email": email } },
+        {
+          $group: {
+            _id: "$booking.transportType",
+            count: { $sum: "$booking.quantity" },
+          },
+        },
+      ])
+      .toArray();
+
+    const total = results.reduce((sum, r) => sum + r.count, 0);
+
+    const colorMap = {
+      Bus: "bg-blue-500",
+      Train: "bg-green-500",
+      Launch: "bg-amber-500",
+      Plane: "bg-purple-500",
+    };
+
+    const result = results.map((r) => ({
+      type: r._id,
+      count: r.count,
+      percentage: total ? Math.round((r.count / total) * 100) : 0,
+      color: colorMap[r._id] || "bg-gray-500",
+    }));
+
+    res.status(200).send({
+      success: true,
+      message: "Tickets by transport fetched successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch transport breakdown",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/vendor/recent-transactions/:email?limit=5
+app.get("/api/vendor/recent-transactions/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const limit = parseInt(req.query.limit) || 5;
+
+    const transactions = await paymentCollection
+      .aggregate([
+        { $match: { paymentStatus: "paid" } },
+        { $addFields: { bookingObjId: { $toObjectId: "$bookingId" } } },
+        {
+          $lookup: {
+            from: "bookings",
+            localField: "bookingObjId",
+            foreignField: "_id",
+            as: "booking",
+          },
+        },
+        { $unwind: "$booking" },
+        { $match: { "booking.vendor.email": email } },
+        { $sort: { createdAt: -1 } },
+        { $limit: limit },
+      ])
+      .toArray();
+
+    const result = transactions.map((t) => ({
+      id: `#TH-${t._id.toString().slice(-5).toUpperCase()}`,
+      date: new Date(t.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      route: `${t.booking.route.from} → ${t.booking.route.to}`,
+      method: "Card", // Stripe payment — swap in real brand if you fetch PaymentIntent details
+      status: "Completed",
+      amount: t.price,
+    }));
+
+    res.status(200).send({
+      success: true,
+      message: "Recent transactions fetched successfully",
+      result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to fetch recent transactions",
+      error: error.message,
+    });
+  }
+});
+
 
 
 // user  related  apis 
